@@ -36,13 +36,41 @@ def format_data(data):
         "\r", " newlinechar ").replace('"', "'")
     return data
 
+# Data is not acceptable if it has been deleted, more than 50 words or more than 1000 chars
+
+
+def acceptable(data):
+    if len(data.split(' ')) > 50 or len(data) < 1:
+        return False
+    elif len(data) > 1000:
+        return False
+    elif data == '[deleted]' or data == '[removed]':
+        return False
+    else:
+        return True
+
+
+def find_existing_score(pid):
+    try:
+        sql = "SELECT score from parent_reply WHERE parent_id = '{}' LIMIT 1".format(
+            pid)
+        c.execute(sql)
+        result = c.fetchOne()
+        if result != None:
+            return result[0]
+        else:
+            return False
+    except Exception as e:
+        print("find_parent", e)
+        return False
+
 
 if __name__ == "__main__":
     create_table()
     row_counter = 0
     paired_rows = 0
 
-    with open("E:/trainingData/{}/RC_{}".format(timeframe.split('-0')[0], timeframe), buffer=1000) as f:
+    with open("E:/trainingData/{}/RC_{}".format(timeframe.split('-0')[0], timeframe), buffering=1000) as f:
         for row in f:
             row_counter += 1
             row = json.loads(row)
@@ -53,3 +81,9 @@ if __name__ == "__main__":
             subreddit = row['subreddit']
 
             parent_data = find_parent(parent_id)
+
+            # Only use comments with atleast 2 likes
+            if score >= 2:
+                existing_comment_score = find_existing_score(parent_id)
+                if existing_comment_score:
+                    if score > existing_comment_score:
